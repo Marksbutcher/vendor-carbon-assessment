@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vendor Environmental Data Quality Assessment</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            go: {
+              primary: '#1B6B4A',
+              dark: '#0F4A32',
+              accent: '#2E9B6E',
+              light: '#4DC490',
+              pale: '#E8F5EE',
+              teal: '#1A8A7D',
+              blue: '#1E6B8A',
+              darkblue: '#14485E',
+              midgrey: '#5A6B70',
+              darkgrey: '#3A4A50',
+              black: '#1A2024',
+              green: '#22883E',
+              red: '#C93B2C',
+              warmyellow: '#E6A817',
+              orange: '#D47A00',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Arial', sans-serif; }
+    .grade-a { background-color: #22883E; color: white; }
+    .grade-b { background-color: #1A8A7D; color: white; }
+    .grade-c { background-color: #E6A817; color: #1A2024; }
+    .grade-d { background-color: #D47A00; color: white; }
+    .grade-e { background-color: #C93B2C; color: white; }
+    .tab-active { border-bottom: 3px solid #1B6B4A; color: #1B6B4A; font-weight: 700; }
+    .tab-inactive { border-bottom: 3px solid transparent; color: #5A6B70; }
+    .tab-inactive:hover { color: #1B6B4A; }
+    .progress-bar { transition: width 0.3s ease; }
+    .question-card { transition: all 0.2s ease; }
+    .section-header { border-left: 4px solid #1B6B4A; }
+    .subcategory-header { border-left: 3px solid #2E9B6E; }
+    .radio-selected { background-color: #E8F5EE; }
+    @media print {
+      .no-print { display: none !important; }
+      .print-break { page-break-before: always; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="app"></div>
+  <script src="data-eud.js"></script>
+  <script src="data-infra.js"></script>
+  <script src="data-cloud.js"></script>
+  <script src="scoring.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
