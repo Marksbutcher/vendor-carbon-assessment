@@ -231,39 +231,46 @@ function renderAssessment() {
     </div>
 
     <!-- Questions -->
-    ${cat.sections.map(section => renderSection(section, vendor)).join('')}
+    ${(() => { let qNum = 0; return cat.sections.map(section => renderSection(section, vendor, qNum, n => qNum = n)).join(''); })()}
   </div>`;
 }
 
-function renderSection(section, vendor) {
+function renderSection(section, vendor, startNum, setNum) {
   const sScore = calculateSectionScore(vendor.answers, section);
   const sGrade = getGrade(sScore.percentage);
+  let qNum = startNum;
+  const questionsHtml = section.questions.map(q => {
+    qNum++;
+    return renderQuestion(q, vendor, qNum);
+  }).join('');
+  if (setNum) setNum(qNum);
   return `
   <div class="mb-8">
-    <div class="section-header bg-white pl-4 pr-4 py-3 rounded-r-lg shadow-sm mb-4 flex items-center justify-between">
+    <div class="section-header bg-go-dark text-white pl-4 pr-4 py-4 rounded-r-lg shadow-sm mb-4 flex items-center justify-between">
       <div>
-        <h3 class="font-bold text-go-dark">${section.name}</h3>
-        <p class="text-xs text-gray-600 mt-1">${section.description}</p>
+        <h3 class="font-bold text-base">${section.name}</h3>
+        <p class="text-xs text-emerald-200 mt-1">${section.description}</p>
       </div>
       <div class="text-right flex-shrink-0 ml-4">
         <span class="inline-block px-2 py-1 rounded text-xs font-bold ${sGrade.cssClass}">${sScore.percentage}%</span>
-        <p class="text-xs text-gray-500 mt-1">${sScore.answered}/${sScore.total} answered</p>
+        <p class="text-xs text-emerald-200 mt-1">${sScore.answered}/${sScore.total} answered</p>
       </div>
     </div>
     <div class="space-y-4">
-      ${section.questions.map((q, idx) => renderQuestion(q, vendor, idx)).join('')}
+      ${questionsHtml}
     </div>
   </div>`;
 }
 
-function renderQuestion(q, vendor, idx) {
+function renderQuestion(q, vendor, num) {
   const selectedIdx = vendor.answers[q.id];
   const wt = getWeightLabel(q.weight);
   const showImpact = state.showDesignImpact[q.id];
 
   return `
   <div class="question-card bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-    <div class="flex items-start justify-between mb-3">
+    <div class="flex items-start gap-3 mb-3">
+      <span class="flex-shrink-0 w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold mt-0.5">${num}</span>
       <div class="flex-1">
         ${q.category ? `<span class="text-xs font-semibold text-go-accent uppercase tracking-wide">${q.category}</span>` : ''}
         <h4 class="font-semibold text-sm text-gray-900 mt-1">${q.question}</h4>
@@ -341,31 +348,49 @@ function renderResults() {
       <h3 class="font-bold text-go-dark mb-4">Detailed Scoring Matrix</h3>
       ${Object.entries(overall.categories).filter(([, c]) => c.answered > 0).map(([catId, catScore]) => {
         const cat = ALL_CATEGORIES[catId];
+        let qNum = 0;
         return `
-        <div class="mb-6 print-break">
-          <h4 class="font-semibold text-sm text-go-dark mb-2 border-b pb-1">${cat.name}</h4>
-          <table class="w-full text-xs">
-            <thead><tr class="text-left text-gray-500 border-b">
-              <th class="py-1.5 pr-2 w-6">#</th><th class="py-1.5 pr-2">Question</th><th class="py-1.5 w-16 text-center">Weight</th><th class="py-1.5 w-16 text-center">Score</th><th class="py-1.5 w-16 text-center">Quality</th>
-            </tr></thead>
-            <tbody>
-              ${cat.sections.flatMap(s => s.questions).map((q, i) => {
-                const ans = vendor.answers[q.id];
-                const maxS = getMaxScore(q);
-                const score = ans !== undefined ? q.responses[ans].score : null;
-                const pct = score !== null ? Math.round((score/maxS)*100) : null;
-                const g = pct !== null ? getGrade(pct) : null;
-                const wl = getWeightLabel(q.weight);
-                return `<tr class="border-b border-gray-100 ${ans === undefined ? 'opacity-50' : ''}">
-                  <td class="py-1.5 pr-2 text-gray-400">${i+1}</td>
-                  <td class="py-1.5 pr-2">${q.question.length > 80 ? q.question.substr(0,80)+'...' : q.question}</td>
-                  <td class="py-1.5 text-center"><span class="px-1 rounded" style="background:${wl.color}15;color:${wl.color}">${wl.label}</span></td>
-                  <td class="py-1.5 text-center font-mono">${score !== null ? score+'/'+maxS : '—'}</td>
-                  <td class="py-1.5 text-center">${g ? `<span class="px-1.5 py-0.5 rounded font-semibold ${g.cssClass}" style="font-size:10px">${pct}%</span>` : '<span class="text-gray-400">—</span>'}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
+        <div class="mb-8 print-break">
+          <div class="bg-go-dark text-white px-4 py-3 rounded-t-lg">
+            <h4 class="font-bold text-sm">${cat.name}</h4>
+          </div>
+          <div class="border border-t-0 border-gray-200 rounded-b-lg divide-y divide-gray-200">
+            ${cat.sections.map(section => {
+              return `
+              <div>
+                <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                  <span class="text-xs font-semibold text-go-primary">${section.name}</span>
+                </div>
+                ${section.questions.map(q => {
+                  qNum++;
+                  const ans = vendor.answers[q.id];
+                  const maxS = getMaxScore(q);
+                  const score = ans !== undefined ? q.responses[ans].score : null;
+                  const pct = score !== null ? Math.round((score/maxS)*100) : null;
+                  const g = pct !== null ? getGrade(pct) : null;
+                  const wl = getWeightLabel(q.weight);
+                  const responseText = ans !== undefined ? q.responses[ans].text : 'Not answered';
+                  return `
+                  <div class="px-4 py-3 ${ans === undefined ? 'opacity-50 bg-gray-50' : ''}">
+                    <div class="flex items-start gap-3">
+                      <span class="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-xs font-bold mt-0.5">${qNum}</span>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-800 font-medium leading-snug">${q.question}</p>
+                        <div class="mt-2 flex items-start gap-2">
+                          <span class="flex-shrink-0 text-xs text-gray-400 mt-0.5">Response:</span>
+                          <p class="text-xs text-gray-600 leading-relaxed italic">${responseText}</p>
+                        </div>
+                      </div>
+                      <div class="flex-shrink-0 flex items-center gap-2 ml-2">
+                        <span class="px-1.5 py-0.5 rounded text-xs" style="background:${wl.color}15;color:${wl.color}">${wl.label}</span>
+                        ${g ? `<span class="px-2 py-0.5 rounded text-xs font-bold ${g.cssClass}">${pct}%</span>` : '<span class="text-xs text-gray-400">—</span>'}
+                      </div>
+                    </div>
+                  </div>`;
+                }).join('')}
+              </div>`;
+            }).join('')}
+          </div>
         </div>`;
       }).join('')}
     </div>
