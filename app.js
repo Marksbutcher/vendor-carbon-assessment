@@ -260,9 +260,6 @@ function renderQuestion(q, vendor, idx) {
   const selectedIdx = vendor.answers[q.id];
   const wt = getWeightLabel(q.weight);
   const showImpact = state.showDesignImpact[q.id];
-  const maxScore = getMaxScore(q);
-  const currentScore = selectedIdx !== undefined ? q.responses[selectedIdx].score : null;
-  const scorePercent = currentScore !== null ? Math.round((currentScore / maxScore) * 100) : null;
 
   return `
   <div class="question-card bg-white rounded-lg shadow-sm border border-gray-200 p-5">
