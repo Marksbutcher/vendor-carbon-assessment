@@ -60,8 +60,11 @@ function calculateOverallScore(answers) {
   for (const catId of Object.keys(ALL_CATEGORIES)) {
     const sc = calculateCategoryScore(answers, catId);
     categories[catId] = sc;
-    totalWeighted += sc.score;
-    totalMax += sc.maxScore;
+    // Only include categories with at least one answer in the overall score
+    if (sc.answered > 0) {
+      totalWeighted += sc.score;
+      totalMax += sc.maxScore;
+    }
     totalAnswered += sc.answered;
     totalQuestions += sc.total;
   }

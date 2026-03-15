@@ -274,7 +274,6 @@ function renderQuestion(q, vendor, idx) {
       </div>
       <div class="flex items-center gap-2 ml-4 flex-shrink-0">
         <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:${wt.color}20;color:${wt.color}">${wt.label}</span>
-        ${scorePercent !== null ? `<span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:${getGrade(scorePercent).color}20;color:${getGrade(scorePercent).color}">${scorePercent}%</span>` : ''}
       </div>
     </div>
 
@@ -286,13 +285,10 @@ function renderQuestion(q, vendor, idx) {
     <div class="space-y-2">
       ${q.responses.map((r, rIdx) => {
         const isSelected = selectedIdx === rIdx;
-        const scorePct = Math.round((r.score / maxScore) * 100);
-        const scoreColor = getGrade(scorePct).color;
         return `
         <label class="flex items-start gap-3 p-2.5 rounded border cursor-pointer transition-all ${isSelected ? 'radio-selected border-go-primary' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}" onclick="handleAnswer('${q.id}', ${rIdx})">
           <input type="radio" name="${q.id}" ${isSelected ? 'checked' : ''} class="mt-1 accent-go-primary" />
           <span class="text-sm flex-1">${r.text}</span>
-          <span class="text-xs px-1.5 py-0.5 rounded font-mono flex-shrink-0" style="background:${scoreColor}15;color:${scoreColor}">${r.score}/${maxScore}</span>
         </label>`;
       }).join('')}
     </div>
@@ -329,6 +325,7 @@ function renderResults() {
           <h3 class="text-xl font-bold text-go-dark">Overall Data Quality: ${oGrade.label}</h3>
           <p class="text-sm text-gray-700 mt-2">${oGrade.description}</p>
           <p class="text-xs text-gray-500 mt-2">${overall.answered} of ${overall.total} questions answered across all categories</p>
+          ${Object.values(overall.categories).some(c => c.answered === 0) ? `<p class="text-xs text-gray-500 mt-1 italic">Categories with no responses are excluded from the overall score.</p>` : ''}
         </div>
       </div>
     </div>
@@ -340,40 +337,12 @@ function renderResults() {
     </div>
 
     <!-- Category Breakdown -->
-    <div class="grid md:grid-cols-3 gap-6 mb-8">
-      ${Object.entries(overall.categories).map(([catId, catScore]) => {
-        const catInfo = ALL_CATEGORIES[catId];
-        const cGrade = getGrade(catScore.percentage);
-        return `
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div class="flex items-center gap-3 mb-3">
-            <span class="w-10 h-10 rounded-full ${cGrade.cssClass} flex items-center justify-center font-bold text-lg">${cGrade.grade}</span>
-            <div>
-              <h4 class="font-semibold text-sm">${catInfo.name}</h4>
-              <p class="text-xs text-gray-500">${catScore.percentage}% &middot; ${cGrade.label}</p>
-            </div>
-          </div>
-          <div class="w-full bg-gray-200 rounded-full h-2.5 mb-3">
-            <div class="h-2.5 rounded-full" style="width:${catScore.percentage}%;background:${cGrade.color}"></div>
-          </div>
-          <div class="space-y-2">
-            ${catScore.sections.map(s => {
-              const sg = getGrade(s.percentage);
-              return `<div class="flex items-center justify-between text-xs">
-                <span class="text-gray-600 truncate flex-1">${s.name}</span>
-                <span class="px-1.5 py-0.5 rounded font-semibold ml-2" style="background:${sg.color}15;color:${sg.color}">${s.percentage}%</span>
-              </div>`;
-            }).join('')}
-          </div>
-          <p class="text-xs text-gray-400 mt-3">${catScore.answered}/${catScore.total} answered</p>
-        </div>`;
-      }).join('')}
-    </div>
+    ${renderCategoryBreakdown(overall)}
 
     <!-- Detailed Scoring Matrix -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
       <h3 class="font-bold text-go-dark mb-4">Detailed Scoring Matrix</h3>
-      ${Object.entries(overall.categories).map(([catId, catScore]) => {
+      ${Object.entries(overall.categories).filter(([, c]) => c.answered > 0).map(([catId, catScore]) => {
         const cat = ALL_CATEGORIES[catId];
         return `
         <div class="mb-6 print-break">
@@ -404,6 +373,45 @@ function renderResults() {
       }).join('')}
     </div>
   </div>`;
+}
+
+function renderCategoryBreakdown(overall) {
+  const answeredCats = Object.entries(overall.categories).filter(([, c]) => c.answered > 0);
+  const skippedCats = Object.entries(overall.categories).filter(([, c]) => c.answered === 0);
+  const gridCols = answeredCats.length === 1 ? 'md:grid-cols-1 max-w-md' : answeredCats.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3';
+
+  let html = '<div class="grid ' + gridCols + ' gap-6 mb-8">';
+  for (const [catId, catScore] of answeredCats) {
+    const catInfo = ALL_CATEGORIES[catId];
+    const cGrade = getGrade(catScore.percentage);
+    html += '<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-5">';
+    html += '<div class="flex items-center gap-3 mb-3">';
+    html += '<span class="w-10 h-10 rounded-full ' + cGrade.cssClass + ' flex items-center justify-center font-bold text-lg">' + cGrade.grade + '</span>';
+    html += '<div><h4 class="font-semibold text-sm">' + catInfo.name + '</h4>';
+    html += '<p class="text-xs text-gray-500">' + catScore.percentage + '% &middot; ' + cGrade.label + '</p></div></div>';
+    html += '<div class="w-full bg-gray-200 rounded-full h-2.5 mb-3">';
+    html += '<div class="h-2.5 rounded-full" style="width:' + catScore.percentage + '%;background:' + cGrade.color + '"></div></div>';
+    html += '<div class="space-y-2">';
+    for (const s of catScore.sections) {
+      const sg = getGrade(s.percentage);
+      html += '<div class="flex items-center justify-between text-xs">';
+      html += '<span class="text-gray-600 truncate flex-1">' + s.name + '</span>';
+      html += '<span class="px-1.5 py-0.5 rounded font-semibold ml-2" style="background:' + sg.color + '15;color:' + sg.color + '">' + s.percentage + '%</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+    html += '<p class="text-xs text-gray-400 mt-3">' + catScore.answered + '/' + catScore.total + ' answered</p>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  if (skippedCats.length > 0) {
+    const names = skippedCats.map(([catId]) => ALL_CATEGORIES[catId].name).join(', ');
+    const plural = skippedCats.length > 1;
+    html += '<div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-8 text-sm text-gray-500">';
+    html += '<strong>Not assessed:</strong> ' + names + ' — no responses were provided for ' + (plural ? 'these categories' : 'this category') + ', so ' + (plural ? 'they are' : 'it is') + ' excluded from the overall score.</div>';
+  }
+  return html;
 }
 
 function renderDesignImplication(grade, overall) {
@@ -487,10 +495,10 @@ function renderComparisonTable(ids) {
         <tr class="border-b bg-gray-50">
           <td class="py-3 text-sm font-semibold">${catInfo.name}</td>
           ${catScores.map((s, i) => `<td class="py-3 text-center">
-            <div class="flex items-center justify-center gap-2">
+            ${s.answered > 0 ? `<div class="flex items-center justify-center gap-2">
               <span class="w-8 h-8 rounded-full ${catGrades[i].cssClass} flex items-center justify-center font-bold text-sm">${catGrades[i].grade}</span>
               <span class="text-sm">${s.percentage}%</span>
-            </div>
+            </div>` : '<span class="text-xs text-gray-400">Not assessed</span>'}
           </td>`).join('')}
         </tr>`;
 
